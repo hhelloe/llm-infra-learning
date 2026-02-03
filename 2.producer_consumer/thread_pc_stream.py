@@ -59,3 +59,18 @@ def main():
 
     req_q = Queue(maxsize=50)   # 请求队列：调度 + 背压
     out_q = Queue(maxsize=500)  # 输出队列：token streaming
+
+    # 启动 streamer（模拟写回客户端）
+    t_stream = threading.Thread(target=streamer, args=(out_q, n_requests), daemon=True)
+    t_stream.start()
+
+    # 启动workers
+    workers = []
+    for wid in range(n_workers):
+        t = threading.Thread(target=worker, args=(wid, req_q, out_q), daemon=True)
+        t.start()
+        workers.append(t)
+
+    # 启动 producer（模拟请求涌入）
+    t_prod = threading.Thread(target=producer, args=(req_q, n_requests, True), daemon=True)
+    t_prod.start()

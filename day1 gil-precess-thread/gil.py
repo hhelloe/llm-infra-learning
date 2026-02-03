@@ -69,7 +69,7 @@ def run_case(executor_cls, workers: int, chunks: int, n: int):
 
 def main():
     # 让任务足够重一些，才看得出差异
-    n = 400_000     # 机器快的话可以改成 600_000 或 800_000
+    n = 600_000     # 机器快的话可以改成 600_000 或 800_000
     cpu_cnt = os.cpu_count() or 4
     workers = min(8, cpu_cnt)   # 不要盲目开很大
     chunks = workers * 4        # 让任务分更细一点

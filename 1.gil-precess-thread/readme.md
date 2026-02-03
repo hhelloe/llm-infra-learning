@@ -36,3 +36,22 @@ parent process cpu% (approx) = 0.0%
 于是我把n调大，改为800000但仍然不理想，最后继续调大改成1200000结果就符合预期了:
 进程并行显著节省了时间（从1.361s跑完变成了0.548秒），线程并行无明显变化（1.361s和1.360s几乎无差别）
 结论让人能直观的认识到python的gil（全局解释器锁）规定Python在同一时刻只允许一个线程执行Python字节码
+
+## Addition
+上述cpu利用率在并行时都显得非常低，发现是因为只监控了父进程，于是写了一个函数监视子进程和父进程之和（变量名未修改，parent process其实是进程父子之和）
+=== ThreadPoolExecutor | workers=1 | chunks=32 | n=1200000 | pid=146184 ===
+total primes = 92938
+elapsed = 1.317s
+parent process cpu% (approx) = 70.6%
+
+=== ThreadPoolExecutor | workers=8 | chunks=32 | n=1200000 | pid=146184 ===
+total primes = 92938
+elapsed = 1.366s
+parent process cpu% (approx) = 5.6%
+
+=== ProcessPoolExecutor | workers=8 | chunks=32 | n=1200000 | pid=146184 ===
+total primes = 92938
+elapsed = 0.567s
+parent process cpu% (approx) = 231.3%
+
+这里能看出进程并行跑了大约2.3个核，如果要吃满更多核，可能需要把chunks调小/n再调大一点

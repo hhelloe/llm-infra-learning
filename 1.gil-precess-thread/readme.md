@@ -38,7 +38,7 @@ parent process cpu% (approx) = 0.0%
 结论让人能直观的认识到python的gil（全局解释器锁）规定Python在同一时刻只允许一个线程执行Python字节码
 
 ## Addition
-上述cpu利用率在并行时都显得非常低，发现是因为只监控了父进程，于是写了一个函数监视子进程和父进程之和（变量名未修改，parent process其实是进程父子之和）
+上述cpu利用率在并行时显得非常低，发现是因为只监控了父进程，于是写了一个函数监视子进程和父进程之和（变量名未修改，parent process其实是进程父子之和）
 === ThreadPoolExecutor | workers=1 | chunks=32 | n=1200000 | pid=146184 ===
 total primes = 92938
 elapsed = 1.317s
@@ -54,4 +54,12 @@ total primes = 92938
 elapsed = 0.567s
 parent process cpu% (approx) = 231.3%
 
-这里能看出进程并行跑了大约2.3个核，如果要吃满更多核，可能需要把chunks调小/n再调大一点
+## 结论
+n 小，多进程不快反慢，n 大，多进程显著加速；多线程始终不加速甚至变慢。
+
+这里能看出进程并行跑了大约2.3个核，如果要吃满更多核,大概需要解决下面的问题
+
+任务太短（0.567s 级别，进程启动/IPC 占比大）
+chunks=32 太碎（IPC + Future 收集开销）
+负载不均（后段数字更大、判素更慢，尾部拖尾导致部分 worker 空等）
+上三行，为ai生成的可能情况

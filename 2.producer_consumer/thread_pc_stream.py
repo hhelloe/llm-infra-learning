@@ -74,3 +74,23 @@ def main():
     # 启动 producer（模拟请求涌入）
     t_prod = threading.Thread(target=producer, args=(req_q, n_requests, True), daemon=True)
     t_prod.start()
+
+    # 等 producer 完成
+    t_prod.join()
+
+    # 等所有请求被 worker 处理完
+    req_q.join()
+
+    # 发送 STOP，让 worker 退出
+    for _ in range(n_workers):
+        req_q.put(STOP)
+    for t in workers:
+        t.join()
+
+    # 等 streamer 消费完输出
+    out_q.join()
+
+    print("ALL DONE")
+
+if __name__ == "__main__":
+    main()

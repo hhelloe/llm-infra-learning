@@ -71,7 +71,7 @@ def main():
         t.start()
         workers.append(t)
 
-    # 启动 producer（模拟请求涌入）
+    # 启动 producer
     t_prod = threading.Thread(target=producer, args=(req_q, n_requests, True), daemon=True)
     t_prod.start()
 

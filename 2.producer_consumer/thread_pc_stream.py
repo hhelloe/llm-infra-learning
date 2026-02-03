@@ -14,3 +14,32 @@ def producer(req_q: Queue, n_requests: int, burst: bool = True):
         req_q.put(req)  # 队列满会阻塞：背压
         print(f"[producer] enqueue rid={rid} prompt_len={req['prompt_len']}")
     print("[producer] done")
+
+def worker(wid: int, req_q: Queue, out_q: Queue):
+    """模拟推理 worker：取请求 -> 生成 token -> 流式输出"""
+    while True:
+        req = req_q.get()  # 阻塞等待
+        if req is STOP:
+            req_q.task_done()
+            print(f"[worker-{wid}] stop")
+            break
+
+        rid = req["rid"]
+        # 模拟推理逐 token 生成
+        n_tokens = random.randint(10, 25)
+        for t in range(n_tokens):
+            time.sleep(random.uniform(0.01, 0.03))
+            out_q.put((rid, wid, f"T{t}"))
+        out_q.put((rid, wid, "[DONE]"))
+
+        req_q.task_done()
+
+
+
+
+def main():
+    n_requests = 20
+    n_workers = 4
+
+    req_q = Queue(maxsize=50)   # 请求队列：调度 + 背压
+    out_q = Queue(maxsize=500)  # 输出队列：token streaming

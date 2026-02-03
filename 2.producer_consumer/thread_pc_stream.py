@@ -34,7 +34,23 @@ def worker(wid: int, req_q: Queue, out_q: Queue):
 
         req_q.task_done()
 
+def streamer(out_q: Queue, n_requests: int):
+    """模拟向客户端 streaming：不断取 token 并输出"""
+    done = set()
+    while len(done) < n_requests:
+        try:
+            rid, wid, token = out_q.get(timeout=1.0)
+        except Empty:
+            continue
 
+        if token == "[DONE]":
+            if rid not in done:
+                done.add(rid)
+            print(f"[stream] rid={rid} from worker-{wid} DONE ({len(done)}/{n_requests})")
+        else:
+            print(f"[stream] rid={rid} from worker-{wid} token={token}")
+
+        out_q.task_done()
 
 
 def main():

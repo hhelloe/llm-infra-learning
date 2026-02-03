@@ -2,7 +2,7 @@
 import os
 
 FILE = "test_100mb.bin"
-SIZE = 100 * 1024 * 1024  # 100MB
+SIZE = 800 * 1024 * 1024  # 100MB
 
 if not os.path.exists(FILE):
     with open(FILE, "wb") as f:

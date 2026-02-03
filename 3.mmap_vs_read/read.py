@@ -1,4 +1,3 @@
-# read_normal.py
 import time
 
 FILE = "test_100mb.bin"

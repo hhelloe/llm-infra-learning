@@ -3,10 +3,11 @@ import time
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
-# from ..metrics import LatencyStats  # 不需要这行，LatencyStats 只在 metrics 里定义，未在这里使用
+from ..metrics import LatencyStats, percentile
 
+stats = LatencyStats(maxlen=5000)
 # 限流
-MAX_CONCURRENCY = 429
+MAX_CONCURRENCY = 8
 sem = asyncio.Semaphore(MAX_CONCURRENCY)
 
 # 请求/响应结构
@@ -18,9 +19,9 @@ class InferRequest(BaseModel):
 
 class InferResponse(BaseModel):
     text: str
-    prompt_tokens: int
-    new_tokens: int
-    latency_ms: int
+    server_latency_ms: int
+    queue_wait_ms: int
+    infer_ms: int
 
 
 def fake_tokenize(s: str) -> int:
@@ -37,23 +38,45 @@ async def mock_infer(req: InferRequest) -> str:
 
 # 注册路由的主函数
 def register_routes(app):
+    @app.get("/metrics")
+    async def metrics():
+        latencies, ts = stats.snapshot()
+        latencies.sort()
+        now = time.time()
+        # 粗算最近 10 秒 QPS
+        window = 10.0
+        recent = [x for x in ts if x >= now - window]
+        qps = len(recent) / window if window > 0 else 0.0
+        return {
+            "count": len(latencies),
+            "p50_ms": percentile(latencies, 50),
+            "p90_ms": percentile(latencies, 90),
+            "p99_ms": percentile(latencies, 99),
+            "qps_10s": round(qps, 2),
+        }
+
     @app.post("/infer", response_model=InferResponse)
     async def infer(req: InferRequest):
-        start = time.perf_counter()
+        t0 = time.perf_counter()
 
-        # 并发限流：拿不到就排队等
+        # 记录进入 semaphore 前后的时间差 = queue wait
+        q0 = time.perf_counter()
         async with sem:
+            queue_wait_ms = int((time.perf_counter() - q0) * 1000)
+
+            i0 = time.perf_counter()
             try:
-                # timeout
-                # 给单次推理一个硬上限，防止慢请求无限占资源
                 text = await asyncio.wait_for(mock_infer(req), timeout=req.timeout_ms / 1000.0)
             except asyncio.TimeoutError:
                 raise HTTPException(status_code=504, detail="inference timeout")
+            infer_ms = int((time.perf_counter() - i0) * 1000)
 
-        latency_ms = int((time.perf_counter() - start) * 1000)
+        server_latency_ms = int((time.perf_counter() - t0) * 1000)
+        stats.add(server_latency_ms)
+
         return InferResponse(
             text=text,
-            prompt_tokens=fake_tokenize(req.prompt),
-            new_tokens=req.max_new_tokens,
-            latency_ms=latency_ms,
+            server_latency_ms=server_latency_ms,
+            queue_wait_ms=queue_wait_ms,
+            infer_ms=infer_ms,
         )

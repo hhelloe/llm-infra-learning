@@ -220,3 +220,13 @@ def register_routes(app):
             "qps_10s": round(qps, 2),
             "current_batch_size": BATCH_SIZE,
         }
+    
+async def mock_batch_infer(reqs: List[BatchInferRequest]) -> List[str]:
+    # 模拟：一个 batch 的耗时由最慢请求决定（尾部绑架）
+    sleep_ms = max(r.latency_ms for r in reqs)
+    await asyncio.sleep(sleep_ms / 1000.0)
+
+    outs = []
+    for r in reqs:
+        outs.append(r.prompt + " " + ("<tok> " * r.max_new_tokens).strip())
+    return outs

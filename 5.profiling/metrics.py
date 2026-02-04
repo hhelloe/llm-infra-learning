@@ -1,4 +1,5 @@
 import threading
+import time
 from collections import deque
 
 class LatencyStats:

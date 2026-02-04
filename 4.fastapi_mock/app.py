@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 app = FastAPI(title="Inference Mock")
 
 # 限流
-MAX_CONCURRENCY = 8
+MAX_CONCURRENCY = 429
 sem = asyncio.Semaphore(MAX_CONCURRENCY)
 
 # 请求/响应结构
